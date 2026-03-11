@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日记 - MOONLIGHT</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">MOONLIGHT</div>
+        <ul class="nav-links">
+            <li><a href="index.html">首页</a></li>
+            <li><a href="tools.html">小工具</a></li>
+            <li><a href="diary.html" class="active">日记</a></li>
+        </ul>
+    </nav>
+
+    <main class="container">
+        <h1 class="page-title">日记</h1>
+
+        <div class="diary-layout">
+            <!-- 写日记区域 -->
+            <section class="diary-write">
+                <h2>写日记</h2>
+                <div class="diary-form">
+                    <input type="date" id="diary-date">
+                    <input type="text" id="diary-title" placeholder="标题...">
+                    <textarea id="diary-content" placeholder="今天发生了什么有趣的事..."></textarea>
+                    <div class="diary-tags">
+                        <input type="text" id="diary-tag-input" placeholder="添加标签 (回车分隔)">
+                        <div id="tag-list" class="tag-list"></div>
+                    </div>
+                    <button onclick="saveDiary()">保存日记</button>
+                </div>
+            </section>
+
+            <!-- 日记列表 -->
+            <section class="diary-list">
+                <h2>历史记录</h2>
+                <div class="diary-filter">
+                    <input type="text" id="search-diary" placeholder="搜索日记..." oninput="searchDiaries()">
+                </div>
+                <div id="diary-entries"></div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <p>Made with 💙</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

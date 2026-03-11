@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小工具 - MOONLIGHT</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">MOONLIGHT</div>
+        <ul class="nav-links">
+            <li><a href="index.html">首页</a></li>
+            <li><a href="tools.html" class="active">小工具</a></li>
+            <li><a href="diary.html">日记</a></li>
+        </ul>
+    </nav>
+
+    <main class="container">
+        <h1 class="page-title">小工具</h1>
+
+        <div class="tools-grid">
+            <!-- 密码生成器 -->
+            <div class="tool-card">
+                <h3>🔐 密码生成器</h3>
+                <div class="tool-content">
+                    <input type="text" id="password-output" readonly placeholder="点击生成密码">
+                    <div class="tool-options">
+                        <label>长度: <span id="pwd-length-val">12</span></label>
+                        <input type="range" id="pwd-length" min="6" max="32" value="12">
+                        <label><input type="checkbox" id="pwd-upper" checked> 大写字母</label>
+                        <label><input type="checkbox" id="pwd-lower" checked> 小写字母</label>
+                        <label><input type="checkbox" id="pwd-number" checked> 数字</label>
+                        <label><input type="checkbox" id="pwd-symbol"> 特殊符号</label>
+                    </div>
+                    <button onclick="generatePassword()">生成密码</button>
+                    <button onclick="copyPassword()" class="btn-secondary">复制</button>
+                </div>
+            </div>
+
+            <!-- 待办事项 -->
+            <div class="tool-card">
+                <h3>✅ 待办事项</h3>
+                <div class="tool-content">
+                    <div class="todo-input-group">
+                        <input type="text" id="todo-input" placeholder="添加新任务...">
+                        <button onclick="addTodo()">添加</button>
+                    </div>
+                    <ul id="todo-list" class="todo-list"></ul>
+                </div>
+            </div>
+
+            <!-- 计时器 -->
+            <div class="tool-card">
+                <h3>⏱️ 专注计时器</h3>
+                <div class="tool-content">
+                    <div class="timer-display" id="timer-display">25:00</div>
+                    <div class="timer-buttons">
+                        <button onclick="startTimer()">开始</button>
+                        <button onclick="pauseTimer()">暂停</button>
+                        <button onclick="resetTimer()">重置</button>
+                    </div>
+                    <div class="timer-presets">
+                        <button onclick="setTimer(25)" class="btn-small">25分钟</button>
+                        <button onclick="setTimer(5)" class="btn-small">5分钟</button>
+                        <button onclick="setTimer(45)" class="btn-small">45分钟</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 进制转换 -->
+            <div class="tool-card">
+                <h3>🔢 进制转换</h3>
+                <div class="tool-content">
+                    <label>十进制:</label>
+                    <input type="number" id="dec-input" placeholder="输入十进制数" oninput="convertFromDec()">
+                    <label>二进制:</label>
+                    <input type="text" id="bin-input" placeholder="输入二进制数" oninput="convertFromBin()">
+                    <label>十六进制:</label>
+                    <input type="text" id="hex-input" placeholder="输入十六进制数" oninput="convertFromHex()">
+                    <button onclick="clearConverter()" class="btn-secondary">清空</button>
+                </div>
+            </div>
+
+            <!-- 字节转换 -->
+            <div class="tool-card">
+                <h3>💾 字节转换</h3>
+                <div class="tool-content">
+                    <div class="byte-inputs">
+                        <label>Bytes: <input type="number" id="bytes" oninput="convertBytes(this.value)"></label>
+                        <label>KB: <input type="number" id="kb" oninput="convertKB(this.value)"></label>
+                        <label>MB: <input type="number" id="mb" oninput="convertMB(this.value)"></label>
+                        <label>GB: <input type="number" id="gb" oninput="convertGB(this.value)"></label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JSON格式化 -->
+            <div class="tool-card">
+                <h3>📋 JSON 格式化</h3>
+                <div class="tool-content">
+                    <textarea id="json-input" placeholder="粘贴 JSON 内容..."></textarea>
+                    <div class="json-buttons">
+                        <button onclick="formatJSON()">格式化</button>
+                        <button onclick="minifyJSON()" class="btn-secondary">压缩</button>
+                        <button onclick="clearJSON()" class="btn-secondary">清空</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>Made with 💙</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
