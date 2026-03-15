@@ -401,6 +401,304 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// ========== 全局搜索 ==========
+const searchData = {
+    tools: [
+        { id: 'password', name: '密码生成器', desc: '生成随机安全密码', url: 'tools.html', type: '工具' },
+        { id: 'todo', name: '待办事项', desc: '管理你的任务清单', url: 'tools.html', type: '工具' },
+        { id: 'timer', name: '专注计时器', desc: '番茄工作法计时器', url: 'tools.html', type: '工具' },
+        { id: 'converter', name: '进制转换', desc: '十进制/二进制/十六进制转换', url: 'tools.html', type: '工具' },
+        { id: 'bytes', name: '字节转换', desc: 'B/KB/MB/GB 单位转换', url: 'tools.html', type: '工具' },
+        { id: 'json', name: 'JSON 格式化', desc: '格式化和压缩 JSON', url: 'tools.html', type: '工具' }
+    ]
+};
+
+function performGlobalSearch() {
+    const input = document.getElementById('global-search-input');
+    const dropdown = document.getElementById('search-results');
+    const keyword = input.value.trim().toLowerCase();
+
+    if (!keyword) {
+        dropdown.classList.remove('active');
+        return;
+    }
+
+    const results = [];
+
+    // 搜索工具
+    searchData.tools.forEach(tool => {
+        if (tool.name.toLowerCase().includes(keyword) || tool.desc.toLowerCase().includes(keyword)) {
+            results.push({ ...tool, action: () => { window.location.href = tool.url; } });
+        }
+    });
+
+    // 搜索日记
+    const diaries = storage.get('diaries');
+    diaries.forEach(diary => {
+        if (diary.title.toLowerCase().includes(keyword) || diary.content.toLowerCase().includes(keyword)) {
+            results.push({
+                name: diary.title,
+                desc: diary.content.substring(0, 50) + '...',
+                type: '日记',
+                action: () => { window.location.href = 'diary.html'; }
+            });
+        }
+    });
+
+    // 搜索项目
+    const projects = storage.get('projects');
+    projects.forEach(project => {
+        if (project.title.toLowerCase().includes(keyword) || project.desc.toLowerCase().includes(keyword)) {
+            results.push({
+                name: project.title,
+                desc: project.desc.substring(0, 50) + '...',
+                type: '项目',
+                action: () => {
+                    window.location.href = 'projects.html';
+                    setTimeout(() => showProjectDetail(project.id), 100);
+                }
+            });
+        }
+    });
+
+    // 渲染结果
+    if (results.length === 0) {
+        dropdown.innerHTML = '<div class="search-no-results">没有找到相关结果</div>';
+    } else {
+        dropdown.innerHTML = results.map(r => `
+            <div class="search-result-item" onclick="(${r.action.toString()})()">
+                <div class="result-type">${r.type}</div>
+                <div class="result-title">${escapeHtml(r.name)}</div>
+                <div class="result-desc">${escapeHtml(r.desc)}</div>
+            </div>
+        `).join('');
+    }
+
+    dropdown.classList.add('active');
+}
+
+// 点击外部关闭搜索下拉
+document.addEventListener('click', (e) => {
+    const searchBox = document.querySelector('.global-search');
+    if (searchBox && !searchBox.contains(e.target)) {
+        const dropdown = document.getElementById('search-results');
+        if (dropdown) dropdown.classList.remove('active');
+    }
+});
+
+// 回车搜索
+document.getElementById('global-search-input')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        performGlobalSearch();
+    }
+});
+
+// ========== 项目功能 ==========
+let currentProjectId = null;
+
+function loadProjects() {
+    const projects = storage.get('projects');
+    renderProjects(projects);
+}
+
+function renderProjects(projects) {
+    const container = document.getElementById('projects-container');
+    if (!container) return;
+
+    if (projects.length === 0) {
+        container.innerHTML = '<div class="empty-state">还没有项目，添加一个吧 🚀</div>';
+        return;
+    }
+
+    // 按时间倒序
+    projects.sort((a, b) => b.createdAt - a.createdAt);
+
+    container.innerHTML = projects.map(project => `
+        <div class="project-item" onclick="showProjectDetail(${project.id})">
+            <h3>${escapeHtml(project.title)}</h3>
+            <p>${escapeHtml(project.desc)}</p>
+            <div class="project-meta">
+                <div class="project-tags">
+                    ${(project.tags || []).slice(0, 3).map(tag =>
+                        `<span class="project-tag">${escapeHtml(tag)}</span>`
+                    ).join('')}
+                </div>
+                <span>${formatDate(project.createdAt)}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function showAddProjectForm() {
+    const form = document.getElementById('add-project-form');
+    if (form) form.style.display = 'block';
+}
+
+function hideAddProjectForm() {
+    const form = document.getElementById('add-project-form');
+    if (form) {
+        form.style.display = 'none';
+        // 清空表单
+        document.getElementById('project-title').value = '';
+        document.getElementById('project-link').value = '';
+        document.getElementById('project-desc').value = '';
+        document.getElementById('project-tags').value = '';
+    }
+}
+
+function saveProject() {
+    const title = document.getElementById('project-title').value.trim();
+    const link = document.getElementById('project-link').value.trim();
+    const desc = document.getElementById('project-desc').value.trim();
+    const tagsInput = document.getElementById('project-tags').value.trim();
+
+    if (!title || !desc) {
+        alert('请填写项目名称和描述');
+        return;
+    }
+
+    const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
+
+    const projects = storage.get('projects');
+    projects.push({
+        id: Date.now(),
+        title,
+        link,
+        desc,
+        tags,
+        createdAt: Date.now()
+    });
+
+    storage.set('projects', projects);
+    hideAddProjectForm();
+    renderProjects(projects);
+}
+
+function showProjectDetail(id) {
+    const projects = storage.get('projects');
+    const project = projects.find(p => p.id === id);
+    if (!project) return;
+
+    currentProjectId = id;
+
+    const detailSection = document.getElementById('project-detail');
+    document.getElementById('detail-title').textContent = project.title;
+
+    let content = project.desc;
+    if (project.link) {
+        content += `\n\n🔗 链接: ${project.link}`;
+    }
+    document.getElementById('detail-content').innerHTML = escapeHtml(content).replace(
+        /(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>'
+    ).replace(/\n/g, '<br>');
+
+    const tagsContainer = document.getElementById('detail-tags');
+    tagsContainer.innerHTML = (project.tags || []).map(tag =>
+        `<span class="entry-tag">${escapeHtml(tag)}</span>`
+    ).join('');
+
+    detailSection.style.display = 'block';
+
+    // 加载评论
+    loadComments(id);
+}
+
+function closeProjectDetail() {
+    const detailSection = document.getElementById('project-detail');
+    if (detailSection) detailSection.style.display = 'none';
+    currentProjectId = null;
+}
+
+function searchProjects() {
+    const keyword = document.getElementById('search-project').value.toLowerCase();
+    const projects = storage.get('projects');
+
+    const filtered = projects.filter(p =>
+        p.title.toLowerCase().includes(keyword) ||
+        p.desc.toLowerCase().includes(keyword) ||
+        (p.tags || []).some(t => t.toLowerCase().includes(keyword))
+    );
+
+    renderProjects(filtered);
+}
+
+// ========== 评论功能 ==========
+function loadComments(projectId) {
+    const allComments = storage.get('comments');
+    const comments = allComments.filter(c => c.projectId === projectId);
+    renderComments(comments);
+}
+
+function renderComments(comments) {
+    const container = document.getElementById('comments-list');
+    if (!container) return;
+
+    if (comments.length === 0) {
+        container.innerHTML = '<div class="no-comments">暂无评论，来发表第一条吧 💬</div>';
+        return;
+    }
+
+    // 按时间倒序
+    comments.sort((a, b) => b.createdAt - a.createdAt);
+
+    container.innerHTML = comments.map(comment => `
+        <div class="comment-item">
+            <div class="comment-header">
+                <span class="comment-author">${escapeHtml(comment.author || '匿名')}</span>
+                <span class="comment-time">${formatDate(comment.createdAt)}</span>
+            </div>
+            <div class="comment-content">${escapeHtml(comment.content)}</div>
+            <div class="comment-actions">
+                <button onclick="deleteComment(${comment.id})" class="btn-small">删除</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function addComment() {
+    if (!currentProjectId) return;
+
+    const author = document.getElementById('comment-author').value.trim() || '匿名';
+    const content = document.getElementById('comment-content').value.trim();
+
+    if (!content) {
+        alert('请输入评论内容');
+        return;
+    }
+
+    const comments = storage.get('comments');
+    comments.push({
+        id: Date.now(),
+        projectId: currentProjectId,
+        author,
+        content,
+        createdAt: Date.now()
+    });
+
+    storage.set('comments', comments);
+
+    // 清空表单
+    document.getElementById('comment-content').value = '';
+
+    loadComments(currentProjectId);
+}
+
+function deleteComment(commentId) {
+    if (!confirm('确定要删除这条评论吗？')) return;
+
+    let comments = storage.get('comments');
+    comments = comments.filter(c => c.id !== commentId);
+    storage.set('comments', comments);
+
+    loadComments(currentProjectId);
+}
+
+// ========== 工具函数 ==========
+function formatDate(timestamp) {
+    const date = new Date(timestamp);
+    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+}
+
 // ========== 初始化 ==========
 document.addEventListener('DOMContentLoaded', () => {
     // 设置今天的日期
@@ -412,4 +710,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // 加载数据
     loadTodos();
     loadDiaries();
+    loadProjects();
 });

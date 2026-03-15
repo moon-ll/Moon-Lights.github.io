@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目案例 - MOONLIGHT</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">MOONLIGHT</div>
+        <div class="nav-center">
+            <div class="global-search">
+                <input type="text" id="global-search-input" placeholder="搜索工具、日记、项目...">
+                <button id="search-btn" onclick="performGlobalSearch()">🔍</button>
+                <div id="search-results" class="search-dropdown"></div>
+            </div>
+        </div>
+        <ul class="nav-links">
+            <li><a href="index.html">首页</a></li>
+            <li><a href="tools.html">小工具</a></li>
+            <li><a href="diary.html">日记</a></li>
+            <li><a href="projects.html" class="active">项目</a></li>
+        </ul>
+    </nav>
+
+    <main class="container">
+        <h1 class="page-title">项目案例</h1>
+
+        <div class="projects-layout">
+            <!-- 项目列表 -->
+            <section class="projects-list">
+                <div class="project-filter">
+                    <input type="text" id="search-project" placeholder="搜索项目..." oninput="searchProjects()">
+                    <button onclick="showAddProjectForm()" class="btn-primary">+ 添加项目</button>
+                </div>
+
+                <!-- 添加项目表单 -->
+                <div id="add-project-form" class="project-form" style="display: none;">
+                    <h3>添加新项目</h3>
+                    <input type="text" id="project-title" placeholder="项目名称">
+                    <input type="text" id="project-link" placeholder="项目链接 (可选)">
+                    <textarea id="project-desc" placeholder="项目描述..."></textarea>
+                    <input type="text" id="project-tags" placeholder="标签，用逗号分隔">
+                    <div class="form-actions">
+                        <button onclick="saveProject()">保存</button>
+                        <button onclick="hideAddProjectForm()" class="btn-secondary">取消</button>
+                    </div>
+                </div>
+
+                <div id="projects-container"></div>
+            </section>
+
+            <!-- 项目详情/评论区 -->
+            <section class="project-detail" id="project-detail" style="display: none;">
+                <div class="detail-header">
+                    <h2 id="detail-title"></h2>
+                    <button onclick="closeProjectDetail()" class="btn-close">×</button>
+                </div>
+                <div id="detail-content"></div>
+                <div id="detail-tags" class="entry-tags"></div>
+
+                <!-- 评论区 -->
+                <div class="comments-section">
+                    <h3>评论</h3>
+                    <div class="comment-form">
+                        <input type="text" id="comment-author" placeholder="你的名字" maxlength="20">
+                        <textarea id="comment-content" placeholder="写下你的评论..."></textarea>
+                        <button onclick="addComment()">发表评论</button>
+                    </div>
+                    <div id="comments-list"></div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <p>Made with 💙</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

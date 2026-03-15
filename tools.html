@@ -9,10 +9,18 @@
 <body>
     <nav class="navbar">
         <div class="nav-brand">MOONLIGHT</div>
+        <div class="nav-center">
+            <div class="global-search">
+                <input type="text" id="global-search-input" placeholder="搜索工具、日记、项目...">
+                <button id="search-btn" onclick="performGlobalSearch()">🔍</button>
+                <div id="search-results" class="search-dropdown"></div>
+            </div>
+        </div>
         <ul class="nav-links">
             <li><a href="index.html">首页</a></li>
             <li><a href="tools.html" class="active">小工具</a></li>
             <li><a href="diary.html">日记</a></li>
+            <li><a href="projects.html">项目</a></li>
         </ul>
     </nav>
 
