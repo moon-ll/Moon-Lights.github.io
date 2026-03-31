@@ -4,6 +4,89 @@ const storage = {
     set: (key, value) => localStorage.setItem(key, JSON.stringify(value))
 };
 
+// ========== GitHub Gist API ==========
+const ghGists = {
+    baseUrl: 'https://api.github.com/gists',
+
+    getToken() {
+        return localStorage.getItem('gh_token');
+    },
+
+    setToken(token) {
+        localStorage.setItem('gh_token', token);
+    },
+
+    async request(method, endpoint, body = null) {
+        const token = this.getToken();
+        if (!token) {
+            throw new Error('未设置 GitHub Token，请在设置中输入');
+        }
+
+        const options = {
+            method,
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+        };
+
+        if (body) {
+            options.body = JSON.stringify(body);
+            options.headers['Content-Type'] = 'application/json';
+        }
+
+        const response = await fetch(this.baseUrl + endpoint, options);
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || `请求失败: ${response.status}`);
+        }
+        return response.json();
+    },
+
+    async create(filename, content, description = '') {
+        return this.request('POST', '/', {
+            description,
+            public: false,
+            files: { [filename]: { content } }
+        });
+    },
+
+    async list() {
+        return this.request('GET', '?per_page=100');
+    },
+
+    async update(gistId, filename, content) {
+        return this.request('PATCH', `/${gistId}`, {
+            files: { [filename]: { content } }
+        });
+    },
+
+    async delete(gistId) {
+        return this.request('DELETE', `/${gistId}`);
+    }
+};
+
+// ========== Gist 文件名工具 ==========
+const GIST_PREFIX = 'diary-';
+const GIST_SUFFIX = '.json';
+
+function diaryToGistFilename(id) {
+    return `${GIST_PREFIX}${id}${GIST_SUFFIX}`;
+}
+
+function parseGistFilename(filename) {
+    if (!filename.startsWith(GIST_PREFIX) || !filename.endsWith(GIST_SUFFIX)) {
+        return null;
+    }
+    const idStr = filename.slice(GIST_PREFIX.length, -GIST_SUFFIX.length);
+    return parseInt(idStr, 10);
+}
+
+// 内存缓存：gistId <-> diaryId 的映射
+let gistIdMap = {}; // { diaryId: gistId }
+let mapLoaded = false;
+
 // ========== 密码生成器 ==========
 function generatePassword() {
     const length = document.getElementById('pwd-length').value;
@@ -245,22 +328,64 @@ function clearJSON() {
 
 // ========== 日记功能 ==========
 let currentTags = [];
+let diariesCache = []; // 内存缓存
 
 // 设置今天的日期
 document.getElementById('diary-date')?.addEventListener('DOMContentLoaded', function() {
     this.valueAsDate = new Date();
 });
 
-function loadDiaries() {
-    const diaries = storage.get('diaries');
-    renderDiaries(diaries);
+async function loadDiaries() {
+    const container = document.getElementById('diary-entries');
+    if (container) container.innerHTML = '<div class="empty-state">加载中...</div>';
+
+    const token = ghGists.getToken();
+    if (!token) {
+        // 无 Token，使用本地存储
+        diariesCache = storage.get('diaries');
+        renderDiaries(diariesCache);
+        return;
+    }
+
+    try {
+        const gistData = await ghGists.list();
+        const diaries = [];
+        gistIdMap = {};
+
+        for (const gist of gistData) {
+            // 找到 diary-*.json 文件
+            const diaryFile = Object.values(gist.files).find(f =>
+                f.filename.startsWith(GIST_PREFIX) && f.filename.endsWith(GIST_SUFFIX)
+            );
+            if (!diaryFile) continue;
+
+            try {
+                const diary = JSON.parse(diaryFile.content);
+                diary.gistId = gist.id;
+                diaries.push(diary);
+                gistIdMap[diary.id] = gist.id;
+            } catch (e) {
+                console.warn('解析日记失败:', diaryFile.filename, e);
+            }
+        }
+
+        diariesCache = diaries;
+        // 同步到 localStorage
+        storage.set('diaries', diaries);
+        mapLoaded = true;
+        renderDiaries(diaries);
+    } catch (err) {
+        alert('加载日记失败: ' + err.message);
+        diariesCache = storage.get('diaries');
+        renderDiaries(diariesCache);
+    }
 }
 
 function renderDiaries(diaries) {
     const container = document.getElementById('diary-entries');
     if (!container) return;
 
-    if (diaries.length === 0) {
+    if (!diaries || diaries.length === 0) {
         container.innerHTML = '<div class="empty-state">还没有日记，写点什么吧 ✍️</div>';
         return;
     }
@@ -268,7 +393,7 @@ function renderDiaries(diaries) {
     // 按日期倒序
     diaries.sort((a, b) => b.date.localeCompare(a.date));
 
-    container.innerHTML = diaries.map((diary, index) => `
+    container.innerHTML = diaries.map((diary) => `
         <div class="diary-entry">
             <h3>${escapeHtml(diary.title)}</h3>
             <div class="date">${diary.date}</div>
@@ -286,7 +411,7 @@ function renderDiaries(diaries) {
     `).join('');
 }
 
-function saveDiary() {
+async function saveDiary() {
     const date = document.getElementById('diary-date').value;
     const title = document.getElementById('diary-title').value.trim();
     const content = document.getElementById('diary-content').value.trim();
@@ -296,28 +421,46 @@ function saveDiary() {
         return;
     }
 
-    const diaries = storage.get('diaries');
-    const id = document.getElementById('diary-title').dataset.editId;
+    const token = ghGists.getToken();
+    const editId = document.getElementById('diary-title').dataset.editId;
 
-    if (id) {
+    if (editId) {
         // 编辑模式
-        const index = diaries.findIndex(d => d.id == id);
+        const index = diariesCache.findIndex(d => d.id == editId);
         if (index !== -1) {
-            diaries[index] = { id: parseInt(id), date, title, content, tags: currentTags };
+            const diary = { id: parseInt(editId), date, title, content, tags: currentTags };
+            diariesCache[index] = diary;
+
+            if (token && gistIdMap[editId]) {
+                try {
+                    await ghGists.update(gistIdMap[editId], diaryToGistFilename(editId), JSON.stringify(diary));
+                } catch (err) {
+                    alert('更新到 GitHub 失败: ' + err.message);
+                }
+            }
         }
         delete document.getElementById('diary-title').dataset.editId;
     } else {
         // 新建
-        diaries.push({
-            id: Date.now(),
-            date,
-            title,
-            content,
-            tags: currentTags
-        });
+        const id = Date.now();
+        const diary = { id, date, title, content, tags: currentTags };
+        diariesCache.push(diary);
+
+        if (token) {
+            try {
+                const gist = await ghGists.create(
+                    diaryToGistFilename(id),
+                    JSON.stringify(diary),
+                    `Diary: ${title}`
+                );
+                gistIdMap[id] = gist.id;
+            } catch (err) {
+                alert('同步到 GitHub 失败: ' + err.message);
+            }
+        }
     }
 
-    storage.set('diaries', diaries);
+    storage.set('diaries', diariesCache);
 
     // 清空表单
     document.getElementById('diary-title').value = '';
@@ -326,12 +469,11 @@ function saveDiary() {
     currentTags = [];
     renderTags();
 
-    renderDiaries(diaries);
+    renderDiaries(diariesCache);
 }
 
 function editDiary(id) {
-    const diaries = storage.get('diaries');
-    const diary = diaries.find(d => d.id == id);
+    const diary = diariesCache.find(d => d.id == id);
     if (!diary) return;
 
     document.getElementById('diary-date').value = diary.date;
@@ -343,25 +485,61 @@ function editDiary(id) {
     renderTags();
 }
 
-function deleteDiary(id) {
+async function deleteDiary(id) {
     if (!confirm('确定要删除这篇日记吗？')) return;
 
-    let diaries = storage.get('diaries');
-    diaries = diaries.filter(d => d.id != id);
-    storage.set('diaries', diaries);
-    renderDiaries(diaries);
+    diariesCache = diariesCache.filter(d => d.id != id);
+
+    const token = ghGists.getToken();
+    if (token && gistIdMap[id]) {
+        try {
+            await ghGists.delete(gistIdMap[id]);
+            delete gistIdMap[id];
+        } catch (err) {
+            alert('从 GitHub 删除失败: ' + err.message);
+        }
+    }
+
+    storage.set('diaries', diariesCache);
+    renderDiaries(diariesCache);
 }
 
 function searchDiaries() {
     const keyword = document.getElementById('search-diary').value.toLowerCase();
-    const diaries = storage.get('diaries');
-
-    const filtered = diaries.filter(d =>
+    const filtered = diariesCache.filter(d =>
         d.title.toLowerCase().includes(keyword) ||
         d.content.toLowerCase().includes(keyword)
     );
-
     renderDiaries(filtered);
+}
+
+// ========== GitHub 设置 ==========
+function toggleGhSettings() {
+    const panel = document.getElementById('gh-settings-panel');
+    const input = document.getElementById('gh-token-input');
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        input.value = ghGists.getToken() || '';
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+function saveGhToken() {
+    const token = document.getElementById('gh-token-input').value.trim();
+    if (!token) {
+        alert('请输入 Token');
+        return;
+    }
+    ghGists.setToken(token);
+    alert('Token 已保存！现在写日记会自动同步到 GitHub Gist');
+    document.getElementById('gh-settings-panel').style.display = 'none';
+    loadDiaries(); // 重新加载日记
+}
+
+function clearGhToken() {
+    localStorage.removeItem('gh_token');
+    alert('Token 已清除');
 }
 
 // 标签功能

@@ -30,6 +30,16 @@
         <div class="diary-layout">
             <!-- 写日记区域 -->
             <section class="diary-write">
+                <div class="gh-settings">
+                    <button onclick="toggleGhSettings()" class="btn-small">⚙️ GitHub 同步设置</button>
+                    <div id="gh-settings-panel" style="display:none; margin-top: 1rem;">
+                        <input type="password" id="gh-token-input" placeholder="输入 GitHub Personal Access Token">
+                        <button onclick="saveGhToken()" class="btn-small">保存 Token</button>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">
+                            Token 需要 gist 权限，可在 GitHub Settings > Developer settings > Personal access tokens 生成
+                        </p>
+                    </div>
+                </div>
                 <h2>写日记</h2>
                 <div class="diary-form">
                     <input type="date" id="diary-date">

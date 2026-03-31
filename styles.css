@@ -486,6 +486,22 @@ button:hover {
     gap: 0.5rem;
 }
 
+.gh-settings {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.gh-settings input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+}
+
 .tag-list {
     display: flex;
     flex-wrap: wrap;
