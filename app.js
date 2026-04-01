@@ -972,7 +972,16 @@ async function showContentDetail(id) {
             if (typeof marked !== 'undefined') {
                 bodyHtml = `<div class="content-body">${marked.parse(md)}</div>`;
             } else {
-                bodyHtml = `<pre style="white-space:pre-wrap">${escapeHtml(md)}</pre>`;
+                // 按需加载 marked.js
+                bodyHtml = '<div class="empty-state">正在加载 Markdown 渲染器...</div>';
+                loadMarkedScript().then(() => {
+                    const parsed = typeof marked !== 'undefined' ? marked.parse(md) : escapeHtml(md);
+                    const bodyEl = main.querySelector('.content-body');
+                    if (bodyEl) bodyEl.innerHTML = parsed;
+                }).catch(err => {
+                    const bodyEl = main.querySelector('.content-body');
+                    if (bodyEl) bodyEl.innerHTML = `<pre style="white-space:pre-wrap">${escapeHtml(md)}</pre>`;
+                });
             }
         } else if (item.type === 'video') {
             bodyHtml = `
@@ -1016,6 +1025,18 @@ async function showContentDetail(id) {
     if (window.innerWidth <= 900) {
         main.scrollIntoView({ behavior: 'smooth' });
     }
+}
+
+function loadMarkedScript() {
+    return new Promise((resolve, reject) => {
+        if (typeof marked !== 'undefined') return resolve();
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('加载 Markdown 渲染器失败'));
+        document.head.appendChild(script);
+    });
 }
 
 function searchContents() {

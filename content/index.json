@@ -18,12 +18,12 @@
     "tags": ["动画", "演示", "Canvas"]
   },
   {
-    "id": "sample-video",
-    "title": "示例视频占位",
-    "type": "video",
-    "file": "sample-video.mp4",
+    "id": "add-video",
+    "title": "如何添加视频内容",
+    "type": "article",
+    "file": "add-video.md",
     "date": "2026-04-01",
-    "summary": "这是一个视频条目的示例。将你的 .mp4 文件放入 content/ 目录，并在 index.json 中配置即可展示。",
-    "tags": ["视频", "示例"]
+    "summary": "介绍如何将 MP4 视频文件放入 content/ 目录并在网站上展示。",
+    "tags": ["视频", "教程"]
   }
 ]
