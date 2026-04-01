@@ -9,6 +9,15 @@
     "tags": ["介绍", "教程"]
   },
   {
+    "id": "linear-transform",
+    "title": "线性变换讲解",
+    "type": "video",
+    "file": "linear-transform-video.mp4",
+    "date": "2026-04-01",
+    "summary": "一个 20 秒的短视频，用可视化的方式讲解什么是线性变换、矩阵的本质，以及旋转/缩放/剪切三种基本形式。",
+    "tags": ["数学", "视频", "教程"]
+  },
+  {
     "id": "canvas-demo",
     "title": "Canvas 粒子动画演示",
     "type": "demo",
