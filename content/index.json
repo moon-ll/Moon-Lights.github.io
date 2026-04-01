@@ -1,0 +1,29 @@
+[
+  {
+    "id": "welcome",
+    "title": "欢迎使用内容中心",
+    "type": "article",
+    "file": "welcome.md",
+    "date": "2026-04-01",
+    "summary": "一篇简单的使用说明，介绍如何在本地撰写 Markdown 文章、放置视频和 HTML 演示，并自动展示在网站上。",
+    "tags": ["介绍", "教程"]
+  },
+  {
+    "id": "canvas-demo",
+    "title": "Canvas 粒子动画演示",
+    "type": "demo",
+    "file": "canvas-demo.html",
+    "date": "2026-04-01",
+    "summary": "一个用 HTML5 Canvas 编写的简单粒子连线动画示例，展示如何嵌入交互式演示。",
+    "tags": ["动画", "演示", "Canvas"]
+  },
+  {
+    "id": "sample-video",
+    "title": "示例视频占位",
+    "type": "video",
+    "file": "sample-video.mp4",
+    "date": "2026-04-01",
+    "summary": "这是一个视频条目的示例。将你的 .mp4 文件放入 content/ 目录，并在 index.json 中配置即可展示。",
+    "tags": ["视频", "示例"]
+  }
+]

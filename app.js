@@ -889,4 +889,231 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTodos();
     loadDiaries();
     loadProjects();
+    loadContents();
 });
+
+
+// ========== 内容中心 ==========
+let contentCache = [];
+let currentContentId = null;
+
+async function loadContents() {
+    const listContainer = document.getElementById('content-list');
+    if (!listContainer) return;
+
+    try {
+        const response = await fetch('content/index.json');
+        if (!response.ok) throw new Error('加载内容索引失败');
+        contentCache = await response.json();
+        renderContentList(contentCache);
+    } catch (err) {
+        console.error(err);
+        listContainer.innerHTML = '<div class="empty-state">加载失败，请检查 content/index.json 是否存在</div>';
+    }
+}
+
+function renderContentList(items) {
+    const container = document.getElementById('content-list');
+    if (!container) return;
+
+    if (!items || items.length === 0) {
+        container.innerHTML = '<div class="empty-state">暂无内容</div>';
+        return;
+    }
+
+    container.innerHTML = items.map(item => {
+        const typeInfo = getContentTypeInfo(item.type);
+        const isActive = currentContentId === item.id ? 'active' : '';
+        return `
+            <div class="content-item ${isActive}" onclick="showContentDetail('${item.id}')">
+                <div class="item-header">
+                    <span class="item-type ${item.type}">${typeInfo.label}</span>
+                    <span class="item-title">${escapeHtml(item.title)}</span>
+                </div>
+                <div class="item-summary">${escapeHtml(item.summary || '')}</div>
+                <div class="item-meta">
+                    <span>${item.date || ''}</span>
+                    ${(item.tags || []).map(tag => `<span class="entry-tag">${escapeHtml(tag)}</span>`).join('')}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getContentTypeInfo(type) {
+    const map = {
+        article: { label: '文章', icon: '📝' },
+        video: { label: '视频', icon: '🎬' },
+        demo: { label: '演示', icon: '🎨' }
+    };
+    return map[type] || { label: '内容', icon: '📄' };
+}
+
+async function showContentDetail(id) {
+    const item = contentCache.find(c => c.id === id);
+    if (!item) return;
+
+    currentContentId = id;
+    renderContentList(contentCache);
+
+    const main = document.getElementById('content-main');
+    if (!main) return;
+
+    main.classList.remove('empty');
+    const typeInfo = getContentTypeInfo(item.type);
+
+    let bodyHtml = '';
+    let actionsHtml = '';
+
+    try {
+        if (item.type === 'article') {
+            const response = await fetch(`content/${item.file}`);
+            const md = await response.text();
+            if (typeof marked !== 'undefined') {
+                bodyHtml = `<div class="content-body">${marked.parse(md)}</div>`;
+            } else {
+                bodyHtml = `<pre style="white-space:pre-wrap">${escapeHtml(md)}</pre>`;
+            }
+        } else if (item.type === 'video') {
+            bodyHtml = `
+                <div class="content-media">
+                    <video controls src="content/${item.file}"></video>
+                </div>
+                <div class="content-body">
+                    <p>${escapeHtml(item.summary || '')}</p>
+                </div>
+            `;
+        } else if (item.type === 'demo') {
+            bodyHtml = `
+                <div class="content-actions">
+                    <button onclick="window.open('content/${item.file}', '_blank')">新标签页打开</button>
+                </div>
+                <div class="content-media">
+                    <iframe src="content/${item.file}" allow="fullscreen"></iframe>
+                </div>
+                <div class="content-body">
+                    <p>${escapeHtml(item.summary || '')}</p>
+                </div>
+            `;
+        }
+    } catch (err) {
+        bodyHtml = `<div class="empty-state">加载内容失败: ${escapeHtml(err.message)}</div>`;
+    }
+
+    main.innerHTML = `
+        <div class="content-header">
+            <h2>${typeInfo.icon} ${escapeHtml(item.title)}</h2>
+            <div class="content-meta">
+                <span>📅 ${item.date || '无日期'}</span>
+                <span>🏷️ ${(item.tags || []).join(', ') || '无标签'}</span>
+            </div>
+        </div>
+        ${actionsHtml}
+        ${bodyHtml}
+    `;
+
+    // 移动端滚动到详情区域
+    if (window.innerWidth <= 900) {
+        main.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+function searchContents() {
+    const keyword = document.getElementById('content-search')?.value.trim().toLowerCase();
+    if (!keyword) {
+        renderContentList(contentCache);
+        return;
+    }
+
+    const filtered = contentCache.filter(item =>
+        item.title.toLowerCase().includes(keyword) ||
+        (item.summary && item.summary.toLowerCase().includes(keyword)) ||
+        (item.tags || []).some(t => t.toLowerCase().includes(keyword))
+    );
+    renderContentList(filtered);
+}
+
+// 扩展全局搜索以支持内容
+(function extendSearch() {
+    const original = performGlobalSearch;
+    window.performGlobalSearch = function() {
+        const input = document.getElementById('global-search-input');
+        const dropdown = document.getElementById('search-results');
+        const keyword = input?.value.trim().toLowerCase();
+
+        if (!keyword) {
+            dropdown?.classList.remove('active');
+            return;
+        }
+
+        const results = [];
+
+        // 搜索工具
+        searchData.tools.forEach(tool => {
+            if (tool.name.toLowerCase().includes(keyword) || tool.desc.toLowerCase().includes(keyword)) {
+                results.push({ ...tool, action: () => { window.location.href = tool.url; } });
+            }
+        });
+
+        // 搜索日记
+        const diaries = storage.get('diaries');
+        diaries.forEach(diary => {
+            if (diary.title.toLowerCase().includes(keyword) || diary.content.toLowerCase().includes(keyword)) {
+                results.push({
+                    name: diary.title,
+                    desc: diary.content.substring(0, 50) + '...',
+                    type: '日记',
+                    action: () => { window.location.href = 'diary.html'; }
+                });
+            }
+        });
+
+        // 搜索项目
+        const projects = storage.get('projects');
+        projects.forEach(project => {
+            if (project.title.toLowerCase().includes(keyword) || project.desc.toLowerCase().includes(keyword)) {
+                results.push({
+                    name: project.title,
+                    desc: project.desc.substring(0, 50) + '...',
+                    type: '项目',
+                    action: () => {
+                        window.location.href = 'projects.html';
+                        setTimeout(() => showProjectDetail(project.id), 100);
+                    }
+                });
+            }
+        });
+
+        // 搜索内容
+        contentCache.forEach(item => {
+            if (item.title.toLowerCase().includes(keyword) ||
+                (item.summary && item.summary.toLowerCase().includes(keyword))) {
+                results.push({
+                    name: item.title,
+                    desc: (item.summary || '').substring(0, 50) + '...',
+                    type: '内容',
+                    action: () => {
+                        window.location.href = 'content.html';
+                        setTimeout(() => showContentDetail(item.id), 100);
+                    }
+                });
+            }
+        });
+
+        if (results.length === 0) {
+            dropdown.innerHTML = '<div class="search-no-results">没有找到相关结果</div>';
+        } else {
+            dropdown.innerHTML = results.map(r => `
+                <div class="search-result-item" onclick="(${r.action.toString()})()">
+                    <div class="result-type">${r.type}</div>
+                    <div class="result-title">${escapeHtml(r.name)}</div>
+                    <div class="result-desc">${escapeHtml(r.desc)}</div>
+                </div>
+            `).join('');
+        }
+
+        dropdown.classList.add('active');
+    };
+})();
+
+
